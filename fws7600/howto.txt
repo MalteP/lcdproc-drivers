@@ -1,0 +1,51 @@
+Aaeon FWS-7600 LCM howto for lcdproc
+by Malte Pöggel <malte.poeggel@securepoint.de>
+
+=== Downloading & Unpacking ===
+
+Download lcdproc 0.5.5:
+wget http://downloads.sourceforge.net/project/lcdproc/lcdproc/0.5.5/lcdproc-0.5.5.tar.gz
+
+Unzip and change into the directory:
+tar xfvz lcdproc-0.5.5.tar.gz
+cd lcdproc-0.5.5
+
+
+=== Patching ===
+
+Now download the patch file into the lcdproc directory, then patch it:
+wget http://chaoscode.eu/data/lcdproc/fws7600/aaeon-lcm-0.5.5.patch
+patch -p1 -i aaeon-lcm-0.5.5.patch
+
+
+=== Compiling ===
+
+Compiling works as usual. We need to specify the hd44780 driver as it is not build by default.
+
+./configure --enable-drivers=hd44780
+make
+sudo make install
+
+
+=== Configuring ===
+
+Before we can use the LCDd, its configuration needs some changes.
+Delete the original configuration and update it with the new one.
+
+cd /usr/local/etc
+rm -f LCDd.conf
+wget http://chaoscode.eu/data/lcdproc/fws7600/LCDd.conf
+
+
+=== Starting ===
+
+You're done! Simply start the LCDd.
+
+sudo /usr/local/sbin/LCDd
+
+If everything's ok, the server screen should appear on the LC display.
+It is listening on 127.0.0.1:13666 for connections from clients.
+For more information check http://lcdproc.org/
+
+Have fun =)
+
