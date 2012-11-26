@@ -12,3 +12,5 @@ D7   (9)  --- D7 (14)
 nIni (16) --- RS (4)
 nAl  (14) --- RW (5)
 nStb (1)  --- EN (6)
+
+Backlight: nSel (17)

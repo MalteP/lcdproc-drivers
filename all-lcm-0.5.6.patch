@@ -1,6 +1,6 @@
 diff -NaurwB lcdproc-0.5.6.orig/acinclude.m4 lcdproc-0.5.6/acinclude.m4
 --- lcdproc-0.5.6.orig/acinclude.m4	2012-09-01 23:34:24.000000000 +0200
-+++ lcdproc-0.5.6/acinclude.m4	2012-11-06 11:13:23.937030174 +0100
++++ lcdproc-0.5.6/acinclude.m4	2012-11-26 13:44:20.626609857 +0100
 @@ -213,7 +213,7 @@
  		hd44780)
  			HD44780_DRIVERS="hd44780-hd44780-serial.o hd44780-hd44780-lis2.o hd44780-hd44780-usblcd.o"
@@ -12,7 +12,7 @@ diff -NaurwB lcdproc-0.5.6.orig/acinclude.m4 lcdproc-0.5.6/acinclude.m4
  				HD44780_DRIVERS="$HD44780_DRIVERS hd44780-hd44780-bwct-usb.o hd44780-hd44780-lcd2usb.o hd44780-hd44780-uss720.o hd44780-hd44780-usbtiny.o hd44780-hd44780-usb4all.o"
 diff -NaurwB lcdproc-0.5.6.orig/configure lcdproc-0.5.6/configure
 --- lcdproc-0.5.6.orig/configure	2012-11-04 11:52:44.000000000 +0100
-+++ lcdproc-0.5.6/configure	2012-11-06 11:13:23.942030316 +0100
++++ lcdproc-0.5.6/configure	2012-11-26 13:44:20.630609918 +0100
 @@ -8501,7 +8501,7 @@
  		hd44780)
  			HD44780_DRIVERS="hd44780-hd44780-serial.o hd44780-hd44780-lis2.o hd44780-hd44780-usblcd.o"
@@ -24,8 +24,8 @@ diff -NaurwB lcdproc-0.5.6.orig/configure lcdproc-0.5.6/configure
  				HD44780_DRIVERS="$HD44780_DRIVERS hd44780-hd44780-bwct-usb.o hd44780-hd44780-lcd2usb.o hd44780-hd44780-uss720.o hd44780-hd44780-usbtiny.o hd44780-hd44780-usb4all.o"
 diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-aaeon.c lcdproc-0.5.6/server/drivers/hd44780-aaeon.c
 --- lcdproc-0.5.6.orig/server/drivers/hd44780-aaeon.c	1970-01-01 01:00:00.000000000 +0100
-+++ lcdproc-0.5.6/server/drivers/hd44780-aaeon.c	2012-11-06 10:53:39.000000000 +0100
-@@ -0,0 +1,183 @@
++++ lcdproc-0.5.6/server/drivers/hd44780-aaeon.c	2012-11-26 13:45:16.615461339 +0100
+@@ -0,0 +1,182 @@
 +/** \file server/drivers/hd44780-aaeon.c
 + * \c 8bit connection type of \c hd44780 driver for Hitachi HD44780 based LCD displays.
 + *
@@ -40,17 +40,17 @@ diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-aaeon.c lcdproc-0.5.6/ser
 + *
 + * The connections are:
 + * printer port   LCD
-+ * D0  (2)	  D0 (7)
-+ * D1  (3)	  D1 (8)
-+ * D2  (4)	  D2 (9)
-+ * D3  (5)	  D3 (10)
-+ * D4  (6)	  D4 (11)
-+ * D5  (7)	  D5 (12)
-+ * D6  (8)	  D6 (13)
-+ * D7  (9)	  D7 (14)
-+ * SEL (1)        RS (4)
-+ * -              RW (5) (pulled low)
-+ * nLF  (16)      EN (6)
++ * D0  (2)  --- D0 (7)
++ * D1  (3)  --- D1 (8)
++ * D2  (4)  --- D2 (9)
++ * D3  (5)  --- D3 (10)
++ * D4  (6)  --- D4 (11)
++ * D5  (7)  --- D5 (12)
++ * D6  (8)  --- D6 (13)
++ * D7  (9)  --- D7 (14)
++ * SEL (17) --- RS (4)
++ * -        --- RW (5) (pulled low)
++ * nLF (14) --- EN (6)
 + *
 + *
 + * Keypad connection:
@@ -137,9 +137,9 @@ diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-aaeon.c lcdproc-0.5.6/ser
 +	common_init (p, IF_8BIT);
 +
 +	if (p->have_keypad) {
-+		// Remember which input lines are stuck
++		// Remember if ACK line is stuck
 +		sem_wait(semid);
-+		p->stuckinputs = ~(~ port_in(p->port + 1) ^ INMASK);
++		p->stuckinputs = (port_in(p->port + 1) ^ INMASK) & ACK;
 +		sem_signal(semid);
 +	}
 +
@@ -192,26 +192,25 @@ diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-aaeon.c lcdproc-0.5.6/ser
 +	sem_wait(semid);
 +
 +	// Read inputs
-+	readval = ~ port_in(p->port + 1) ^ INMASK;
++	readval = port_in(p->port + 1) ^ INMASK;
 +
 +	sem_signal(semid);
 +
-+	readval = ~readval;			//reverse logic
-+        readval = readval & ~p->stuckinputs;	//ignore stuck input lines
++	readval = readval & ~p->stuckinputs;	//ignore stuck input lines
 +
-+        // Keys down?
-+        if((readval & ACK) / ACK)
-+        {
-+                if(((readval & PAPEREND) / PAPEREND) && ((readval & FAULT) / FAULT)) return 2;
-+                        else if((readval & PAPEREND) / PAPEREND) return 4;
-+                                else if((readval & nFAULT) / nFAULT) return 3;
-+                                        else return 1;
-+        } 
-+        return 0;
++	// Keys down?
++	if((readval & ACK) / ACK)
++	{
++		if(((readval & PAPEREND) / PAPEREND) && ((readval & FAULT) / FAULT)) return 2;
++			else if((readval & PAPEREND) / PAPEREND) return 4;
++				else if((readval & nFAULT) / nFAULT) return 3;
++					else return 1;
++	} 
++	return 0;
 +}
 diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-aaeon.h lcdproc-0.5.6/server/drivers/hd44780-aaeon.h
 --- lcdproc-0.5.6.orig/server/drivers/hd44780-aaeon.h	1970-01-01 01:00:00.000000000 +0100
-+++ lcdproc-0.5.6/server/drivers/hd44780-aaeon.h	2012-11-06 11:13:23.944030371 +0100
++++ lcdproc-0.5.6/server/drivers/hd44780-aaeon.h	2012-11-26 13:49:04.581906697 +0100
 @@ -0,0 +1,9 @@
 +#ifndef HD_AAEON_H
 +#define HD_AAEON_H
@@ -224,7 +223,7 @@ diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-aaeon.h lcdproc-0.5.6/ser
 +#endif
 diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-advantech.c lcdproc-0.5.6/server/drivers/hd44780-advantech.c
 --- lcdproc-0.5.6.orig/server/drivers/hd44780-advantech.c	1970-01-01 01:00:00.000000000 +0100
-+++ lcdproc-0.5.6/server/drivers/hd44780-advantech.c	2012-11-06 10:58:20.000000000 +0100
++++ lcdproc-0.5.6/server/drivers/hd44780-advantech.c	2012-11-26 13:48:26.475331048 +0100
 @@ -0,0 +1,202 @@
 +/** \file server/drivers/hd44780-advantech.c
 + * \c 8bit connection type of \c hd44780 driver for Hitachi HD44780 based LCD displays.
@@ -240,7 +239,7 @@ diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-advantech.c lcdproc-0.5.6
 + *
 + * The connections are:
 + * printer port   LCD
-+ * D0   (2)  --- D0 (7) 
++ * D0   (2)  --- D0 (7)
 + * D1   (3)  --- D1 (8)
 + * D2   (4)  --- D2 (9)
 + * D3   (5)  --- D3 (10)
@@ -338,7 +337,7 @@ diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-advantech.c lcdproc-0.5.6
 +	if (p->have_keypad) {
 +		// Remember which input lines are stuck
 +		sem_wait(semid);
-+		p->stuckinputs = ~(~ port_in(p->port + 1) ^ INMASK);
++		p->stuckinputs = ~(port_in(p->port + 1) ^ INMASK);
 +		sem_signal(semid);
 +	}
 +
@@ -430,7 +429,7 @@ diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-advantech.c lcdproc-0.5.6
 +}
 diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-advantech.h lcdproc-0.5.6/server/drivers/hd44780-advantech.h
 --- lcdproc-0.5.6.orig/server/drivers/hd44780-advantech.h	1970-01-01 01:00:00.000000000 +0100
-+++ lcdproc-0.5.6/server/drivers/hd44780-advantech.h	2012-11-06 11:13:23.944030371 +0100
++++ lcdproc-0.5.6/server/drivers/hd44780-advantech.h	2012-11-26 13:48:19.524226338 +0100
 @@ -0,0 +1,9 @@
 +#ifndef HD_ADVANTECH_H
 +#define HD_ADVANTECH_H
@@ -443,7 +442,7 @@ diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-advantech.h lcdproc-0.5.6
 +#endif
 diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-drivers.h lcdproc-0.5.6/server/drivers/hd44780-drivers.h
 --- lcdproc-0.5.6.orig/server/drivers/hd44780-drivers.h	2012-08-19 16:29:08.000000000 +0200
-+++ lcdproc-0.5.6/server/drivers/hd44780-drivers.h	2012-11-06 11:13:23.945030393 +0100
++++ lcdproc-0.5.6/server/drivers/hd44780-drivers.h	2012-11-26 13:44:20.635609998 +0100
 @@ -16,6 +16,8 @@
  # include "hd44780-ext8bit.h"
  # include "hd44780-serialLpt.h"
@@ -464,7 +463,7 @@ diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-drivers.h lcdproc-0.5.6/s
  	{ "picanlcd",      HD44780_CT_PICANLCD,      IF_TYPE_SERIAL,  hd_init_serial    },
 diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-low.h lcdproc-0.5.6/server/drivers/hd44780-low.h
 --- lcdproc-0.5.6.orig/server/drivers/hd44780-low.h	2012-08-19 16:29:08.000000000 +0200
-+++ lcdproc-0.5.6/server/drivers/hd44780-low.h	2012-11-06 11:13:23.946030418 +0100
++++ lcdproc-0.5.6/server/drivers/hd44780-low.h	2012-11-26 13:44:20.635609998 +0100
 @@ -53,6 +53,8 @@
  #define HD44780_CT_USBLCD		19
  #define HD44780_CT_USBTINY		20
@@ -476,7 +475,7 @@ diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-low.h lcdproc-0.5.6/serve
  /** \name Symbolic names for interface types
 diff -NaurwB lcdproc-0.5.6.orig/server/drivers/Makefile.am lcdproc-0.5.6/server/drivers/Makefile.am
 --- lcdproc-0.5.6.orig/server/drivers/Makefile.am	2012-08-19 16:29:08.000000000 +0200
-+++ lcdproc-0.5.6/server/drivers/Makefile.am	2012-11-06 11:13:23.946030418 +0100
++++ lcdproc-0.5.6/server/drivers/Makefile.am	2012-11-26 13:44:20.635609998 +0100
 @@ -95,7 +95,7 @@
  glcdlib_SOURCES =    lcd.h lcd_lib.h glcdlib.h glcdlib.c report.h
  glk_SOURCES =        lcd.h glk.c glk.h glkproto.c glkproto.h report.h
@@ -488,7 +487,7 @@ diff -NaurwB lcdproc-0.5.6.orig/server/drivers/Makefile.am lcdproc-0.5.6/server/
  imon_SOURCES =       lcd.h lcd_lib.h hd44780-charmap.h imon.h imon.c report.h adv_bignum.h
 diff -NaurwB lcdproc-0.5.6.orig/server/drivers/Makefile.in lcdproc-0.5.6/server/drivers/Makefile.in
 --- lcdproc-0.5.6.orig/server/drivers/Makefile.in	2012-11-04 11:52:43.000000000 +0100
-+++ lcdproc-0.5.6/server/drivers/Makefile.in	2012-11-06 11:13:23.948030470 +0100
++++ lcdproc-0.5.6/server/drivers/Makefile.in	2012-11-26 13:44:20.636610014 +0100
 @@ -532,7 +532,7 @@
  glcdlib_SOURCES = lcd.h lcd_lib.h glcdlib.h glcdlib.c report.h
  glk_SOURCES = lcd.h glk.c glk.h glkproto.c glkproto.h report.h
