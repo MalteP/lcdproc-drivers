@@ -114,7 +114,7 @@ diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-aaeon.c lcdproc-0.5.6/ser
 +	PrivateData *p = (PrivateData*) drvthis->private_data;
 +	HD44780_functions *hd44780_functions = p->hd44780_functions;
 +
-+	semid = sem_get();
++	semid = lcd_sem_get();
 +
 +	// Reserve the port registers
 +	if (port_access_multiple(p->port,3)) {
@@ -138,9 +138,9 @@ diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-aaeon.c lcdproc-0.5.6/ser
 +
 +	if (p->have_keypad) {
 +		// Remember if ACK line is stuck
-+		sem_wait(semid);
++		lcd_sem_wait(semid);
 +		p->stuckinputs = (port_in(p->port + 1) ^ INMASK) & ACK;
-+		sem_signal(semid);
++		lcd_sem_signal(semid);
 +	}
 +
 +	return 0;
@@ -169,14 +169,14 @@ diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-aaeon.c lcdproc-0.5.6/ser
 +
 +	portControl |= p->backlight_bit;
 +
-+	sem_wait(semid);
++	lcd_sem_wait(semid);
 +	port_out(p->port + 2, portControl ^ OUTMASK);
 +	port_out(p->port, ch);
 +	if (p->delayBus) p->hd44780_functions->uPause(p, 1);
 +	port_out(p->port + 2, (enableLines|portControl) ^ OUTMASK);
 +	if (p->delayBus) p->hd44780_functions->uPause(p, 1);
 +	port_out(p->port + 2, portControl ^ OUTMASK);
-+	sem_signal(semid);
++	lcd_sem_signal(semid);
 +}
 +
 +
@@ -189,12 +189,12 @@ diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-aaeon.c lcdproc-0.5.6/ser
 +{
 +	unsigned char readval;
 +
-+	sem_wait(semid);
++	lcd_sem_wait(semid);
 +
 +	// Read inputs
 +	readval = port_in(p->port + 1) ^ INMASK;
 +
-+	sem_signal(semid);
++	lcd_sem_signal(semid);
 +
 +	readval = readval & ~p->stuckinputs;	//ignore stuck input lines
 +
@@ -311,7 +311,7 @@ diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-advantech.c lcdproc-0.5.6
 +	PrivateData *p = (PrivateData*) drvthis->private_data;
 +	HD44780_functions *hd44780_functions = p->hd44780_functions;
 +
-+	semid = sem_get();
++	semid = lcd_sem_get();
 +
 +	// Reserve the port registers
 +	if (port_access_multiple(p->port,3)) {
@@ -336,9 +336,9 @@ diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-advantech.c lcdproc-0.5.6
 +
 +	if (p->have_keypad) {
 +		// Remember which input lines are stuck
-+		sem_wait(semid);
++		lcd_sem_wait(semid);
 +		p->stuckinputs = ~(port_in(p->port + 1) ^ INMASK);
-+		sem_signal(semid);
++		lcd_sem_signal(semid);
 +	}
 +
 +	return 0;
@@ -367,14 +367,14 @@ diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-advantech.c lcdproc-0.5.6
 +
 +	portControl |= p->backlight_bit;
 +
-+	sem_wait(semid);
++	lcd_sem_wait(semid);
 +	port_out(p->port + 2, portControl ^ OUTMASK);
 +	port_out(p->port, ch);
 +	if (p->delayBus) p->hd44780_functions->uPause(p, 1);
 +	port_out(p->port + 2, (enableLines|portControl) ^ OUTMASK);
 +	if (p->delayBus) p->hd44780_functions->uPause(p, 1);
 +	port_out(p->port + 2, portControl ^ OUTMASK);
-+	sem_signal(semid);
++	lcd_sem_signal(semid);
 +}
 +
 +
@@ -400,13 +400,13 @@ diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-advantech.c lcdproc-0.5.6
 +{
 +	unsigned char readval;
 +
-+	sem_wait(semid);
++	lcd_sem_wait(semid);
 +
 +	// Read inputs
 +	readval = ~port_in(p->port + 1) ^ INMASK;
 +        readval = readval & ~p->stuckinputs;	//ignore stuck input lines
 +
-+	sem_signal(semid);
++	lcd_sem_signal(semid);
 +
 +        // Keys down?
 +        if(readval & PAPEREND)          /* pin 15 */

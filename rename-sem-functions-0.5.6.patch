@@ -1,0 +1,122 @@
+diff -NaurwB lcdproc-0.5.6.orig/server/drivers/lcd_sem.h lcdproc-0.5.6/server/drivers/lcd_sem.h
+--- lcdproc-0.5.6.orig/server/drivers/lcd_sem.h	2000-03-30 22:20:41.000000000 +0200
++++ lcdproc-0.5.6/server/drivers/lcd_sem.h	2016-12-02 12:30:13.915924144 +0100
+@@ -5,9 +5,9 @@
+ #ifndef LCD_SEM_H
+ #define LCD_SEM_H
+ 
+-int sem_get (void);
+-int sem_wait (int sid);
+-int sem_signal (int sid);
+-int sem_remove (int sid);
++int lcd_sem_get (void);
++int lcd_sem_wait (int sid);
++int lcd_sem_signal (int sid);
++int lcd_sem_remove (int sid);
+ 
+ #endif
+diff -NaurwB lcdproc-0.5.7.orig/server/drivers/lcd_sem.c lcdproc-0.5.7/server/drivers/lcd_sem.c
+--- lcdproc-0.5.7.orig/server/drivers/lcd_sem.c	2010-12-27 14:32:57.000000000 +0100
++++ lcdproc-0.5.7/server/drivers/lcd_sem.c	2016-12-02 14:07:20.924238813 +0100
+@@ -9,12 +9,12 @@
+  * Written by Benjamin Tse (blt@mundil.cs.mu.edu.au); August,October 1995
+  *
+  * Functions in this file:
+- *   getkey      returns the key for the semaphore
+- *   sem_get     create the semaphore (and initialise) if one doesn't exist
+- *                otherwise return its key
+- *   sem_wait    wait on the semaphore
+- *   sem_signal  signal on the semaphore
+- *   sem_remove  remove the semaphore
++ *   getkey          returns the key for the semaphore
++ *   lcd_sem_get     create the semaphore (and initialise) if one doesn't exist
++ *                    otherwise return its key
++ *   lcd_sem_wait    wait on the semaphore
++ *   lcd_sem_signal  signal on the semaphore
++ *   lcd_sem_remove  remove the semaphore
+  *
+  * Legal stuff: At no stage was this program written, assembled or compiled on
+  * any computer at the University of Melbourne, Australia. This program is
+@@ -81,7 +81,7 @@
+  */
+ 
+ int
+-sem_get(void)
++lcd_sem_get(void)
+ {
+ 	int semid;
+ 	union semun semval;
+@@ -126,7 +126,7 @@
+  * \return     \c 0 on success; terminate program with code \c 1 on error.
+  */
+ int
+-sem_wait(int sid)
++lcd_sem_wait(int sid)
+ {
+ 	if (semop(sid, &semaphore_wait, 1) < -1) {
+ 		perror(SEMAPHORE);
+@@ -143,7 +143,7 @@
+  * \return     \c 0 on success; terminate program with code \c 1 on error.
+  */
+ int
+-sem_signal(int sid)
++lcd_sem_signal(int sid)
+ {
+ 	if (semop(sid, &semaphore_signal, 1) < -1) {
+ 		perror(SEMAPHORE);
+@@ -160,7 +160,7 @@
+  * \return     \c 0 on success; terminate program with code \c 1 on error.
+  */
+ int
+-sem_remove(int sid)
++lcd_sem_remove(int sid)
+ {
+ #ifdef EIDRM
+ 	int i;
+diff -NaurwB lcdproc-0.5.6.orig/server/drivers/hd44780-ext8bit.c lcdproc-0.5.6/server/drivers/hd44780-ext8bit.c
+--- lcdproc-0.5.6.orig/server/drivers/hd44780-ext8bit.c	2010-12-27 14:32:57.000000000 +0100
++++ lcdproc-0.5.6/server/drivers/hd44780-ext8bit.c	2016-12-02 13:41:59.466176977 +0100
+@@ -95,7 +95,7 @@
+ 	PrivateData *p = (PrivateData*) drvthis->private_data;
+ 	HD44780_functions *hd44780_functions = p->hd44780_functions;
+ 
+-	semid = sem_get();
++	semid = lcd_sem_get();
+ 
+ 	// Reserve the port registers
+ 	if (port_access_multiple(p->port,3)) {
+@@ -150,14 +150,14 @@
+ 
+ 	portControl |= p->backlight_bit;
+ 
+-	sem_wait(semid);
++	lcd_sem_wait(semid);
+ 	port_out(p->port + 2, portControl ^ OUTMASK);
+ 	port_out(p->port, ch);
+ 	if (p->delayBus) p->hd44780_functions->uPause(p, 1);
+ 	port_out(p->port + 2, (enableLines|portControl) ^ OUTMASK);
+ 	if (p->delayBus) p->hd44780_functions->uPause(p, 1);
+ 	port_out(p->port + 2, portControl ^ OUTMASK);
+-	sem_signal(semid);
++	lcd_sem_signal(semid);
+ }
+ 
+ 
+@@ -186,7 +186,7 @@
+ {
+ 	unsigned char readval;
+ 
+-	sem_wait(semid);
++	lcd_sem_wait(semid);
+ 
+ 	// Convert the positive logic to the negative logic on the LPT port
+ 	port_out(p->port, ~YData & 0x00FF);
+@@ -202,7 +202,7 @@
+ 
+ 	// Put port back into idle state
+ 	port_out(p->port, p->backlight_bit ^ OUTMASK);
+-	sem_signal(semid);
++	lcd_sem_signal(semid);
+ 
+ 	// And convert value back (MSB first).
+ 	return (((readval & FAULT) / FAULT <<4) |		/* pin 15 */
